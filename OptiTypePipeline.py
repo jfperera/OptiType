@@ -259,6 +259,7 @@ if __name__ == '__main__':
     MAPPING_REF = {'gen': os.path.join(this_dir, 'data/hla_reference_dna.fasta'),
                    'nuc': os.path.join(this_dir, 'data/hla_reference_rna.fasta')}
     MAPPING_CMD = config.get("mapping", "razers3") + " " + COMMAND
+    date = datetime.datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H_%M_%S')
     out_dir = 'output'
     os.makedirs(out_dir)
 
