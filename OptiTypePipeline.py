@@ -103,6 +103,9 @@ from builtins import filter
 from builtins import map
 from builtins import range
 
+## eliminate dependency on an X11 server
+import matplotlib
+matplotlib.use('Agg')
 
 import sys
 import subprocess
