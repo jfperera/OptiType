@@ -261,7 +261,8 @@ if __name__ == '__main__':
     MAPPING_CMD = config.get("mapping", "razers3") + " " + COMMAND
     date = datetime.datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d_%H_%M_%S')
     out_dir = 'output'
-    os.makedirs(out_dir)
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
 
     if PYSAM_AVAILABLE:
         extension = 'bam'
