@@ -103,9 +103,6 @@ from builtins import filter
 from builtins import map
 from builtins import range
 
-## eliminate dependency on an X11 server
-import matplotlib
-matplotlib.use('Agg')
 
 import sys
 import subprocess
@@ -231,7 +228,7 @@ if __name__ == '__main__':
     use_discordant = config.getboolean('behavior', 'use_discordant')
 
     if not os.path.exists(args.outdir):
-        os.makedirs(args.outdir)        
+        os.makedirs(args.outdir)
 
     # test if inputs are legit:
     if args.beta < 0.0 or args.beta >= 0.1:
@@ -247,6 +244,7 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     input_extension = args.input[0].split('.')[-1]
+    input_name = args.input[0].split('.')[0]
     assert all(ii.endswith('.' + input_extension) for ii in args.input), 'Mixed input file extensions'
 
     bam_input = (input_extension in ('sam', 'bam', 'SAM', 'BAM'))  # otherwise treated as fastq
@@ -272,16 +270,16 @@ if __name__ == '__main__':
     # SETUP variables and OUTPUT samples
     ref_type = "nuc" if args.rna else "gen"
     is_paired = len(args.input) > 1
-    
-    out_csv = os.path.join(out_dir, ("%s_result.tsv" % date))
-    out_plot = os.path.join(out_dir, ("%s_coverage_plot.pdf" % date))
+
+    out_csv = os.path.join(out_dir, ("%s_result.tsv" % input_name))
+    #out_plot = os.path.join(out_dir, ("%s_coverage_plot.pdf" % date)) no plots -JP
 
     # mapping fished file to reference
     if not bam_input:
         threads = get_num_threads(config.getint("mapping", "threads"))
         if VERBOSE:
           print("\nmapping with %s threads..." % threads)
-        for (i, sample), outbam in zip(enumerate(args.input), bam_paths):          
+        for (i, sample), outbam in zip(enumerate(args.input), bam_paths):
             if VERBOSE:
                 print("\n", ht.now(), "Mapping %s to %s reference..." % (os.path.basename(sample), ref_type.upper()))
 
@@ -297,17 +295,17 @@ if __name__ == '__main__':
         # combine matrices for paired-end mapping
         pos, read_details = ht.pysam_to_hdf(bam_paths[0])
         binary1 = np.sign(pos)  # dtype=np.uint16
-        
+
         pos2, read_details2 = ht.pysam_to_hdf(bam_paths[1])
         binary2 = np.sign(pos2)  # dtype=np.uint16
 
         if not bam_input and config.getboolean('behavior', 'deletebam'):
             os.remove(bam_paths[0])
             os.remove(bam_paths[1])
-        
+
         id1 = set(binary1.index)
         id2 = set(binary2.index)
-        
+
         '''
             test if we actually can do paired-end mapping
             1) look at the last character 2-1 character if they are always the same if so -> proon them away and do
@@ -327,7 +325,7 @@ if __name__ == '__main__':
             pos2.index = list(map(cut_last_char, pos2.index))
             read_details.index = list(map(cut_last_char, read_details.index))
             read_details2.index = list(map(cut_last_char, read_details2.index))
-            
+
         binary_p, binary_mis, binary_un =  ht.create_paired_matrix(binary1, binary2)
 
         if binary_p.shape[0] < len(id1) * 0.1:
@@ -395,7 +393,7 @@ if __name__ == '__main__':
         groups_4digit[type_4digit].append(allele)
 
     sparse_dict = ht.mtx_to_sparse_dict(compact_mtx)
-    threads = get_num_threads(config.getint("ilp", "threads"))               
+    threads = get_num_threads(config.getint("ilp", "threads"))
     if VERBOSE:
         print("\nstarting ilp solver with %s threads..." % threads)
         print("\n", ht.now(), 'Initializing OptiType model...')
@@ -413,14 +411,15 @@ if __name__ == '__main__':
             result_4digit[iii] = None
     r = result_4digit[["A1", "A2", "B1", "B2", "C1", "C2", "nof_reads", "obj"]]
 
-    # write CSV to out. And generate plots
+    # write CSV to out. And generate plots --Plots are commented out -JP
     r.to_csv(out_csv, sep="\t",
                          columns=["A1", "A2", "B1", "B2", "C1", "C2", "nof_reads", "obj"],
                          header=["A1", "A2", "B1", "B2", "C1", "C2", "Reads", "Objective"])
-    
-    hlatype = result.iloc[0][["A1", "A2", "B1", "B2", "C1", "C2"]].drop_duplicates().dropna()
-    features_used = [('intron', 1), ('exon', 2), ('intron', 2), ('exon', 3), ('intron', 3)] \
-                     if not args.rna else [('exon',2),('exon',3)]
-    plot_variables = [pos, read_details, pos2, read_details2, (binary_p, binary_un, binary_mis)] if is_paired else [pos, read_details]
-    coverage_mat = ht.calculate_coverage(plot_variables, features, hlatype, features_used)
-    ht.plot_coverage(out_plot, coverage_mat, table, features, features_used)
+
+    ###COMMENTING OUT THE SECTION THAT CREATES GRAPHS -JP
+    # hlatype = result.iloc[0][["A1", "A2", "B1", "B2", "C1", "C2"]].drop_duplicates().dropna()
+    # features_used = [('intron', 1), ('exon', 2), ('intron', 2), ('exon', 3), ('intron', 3)] \
+    #                  if not args.rna else [('exon',2),('exon',3)]
+    # plot_variables = [pos, read_details, pos2, read_details2, (binary_p, binary_un, binary_mis)] if is_paired else [pos, read_details]
+    # coverage_mat = ht.calculate_coverage(plot_variables, features, hlatype, features_used)
+    # ht.plot_coverage(out_plot, coverage_mat, table, features, features_used)
